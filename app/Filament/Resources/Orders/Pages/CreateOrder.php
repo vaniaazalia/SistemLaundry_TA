@@ -15,14 +15,17 @@ class CreateOrder extends CreateRecord
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        $tanggal = now()->format('Ymd');
-        $count   = \App\Models\Order::whereDate('created_at', today())->count() + 1;
-        $kode    = 'LDR-' . $tanggal . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+{
+    $tanggal = now()->format('Ymd');
+    $count   = \App\Models\Order::whereDate('created_at', today())->count() + 1;
+    $kode    = 'LDR-' . $tanggal . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
-        $data['kode_order']   = $kode;
-        $data['barcode_data'] = $kode;
+    $data['kode_order'] = $kode;
 
-        return $data;
-    }
+    // Pakai ID terakhir + 1 supaya tidak duplikat
+    $lastId = \App\Models\Order::max('id') ?? 0;
+    $data['barcode_data'] = str_pad($lastId + 1, 6, '0', STR_PAD_LEFT);
+
+    return $data;
+}
 }

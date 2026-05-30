@@ -1,3 +1,8 @@
+@php
+    use Milon\Barcode\DNS1D;
+    $barcode = new DNS1D();
+@endphp
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -23,17 +28,23 @@
 
         .barcode-container {
             text-align: center;
-            margin: 6px 0;
+            margin: 6px auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .barcode-container svg {
-            max-width: 100%;
-        }
+        .barcode-container table {
+            margin: 0 auto !important;
+            float: none !important;
+        }  
 
         .kode-text {
             font-size: 10px;
             letter-spacing: 2px;
             margin-top: 3px;
+            text-align: center;
         }
 
         .footer {
@@ -67,7 +78,7 @@
 <body>
 
     {{-- Header --}}
-    <div class="center bold" style="font-size:14px;">LAUNDRY SMEA BOSKU</div>
+    <div class="center bold" style="font-size:14px;">LAUNDRY SMEAS BOSKU</div>
     <div class="center">Jl. Smea No. 4, Surabaya</div>
     <div class="center">Telp: 089678333548</div>
 
@@ -140,7 +151,7 @@
 
     {{-- Barcode --}}
     <div class="barcode-container">
-        {!! DNS1D::getBarcodeHTML($order->barcode_data, 'C128', 1.5, 45) !!}
+        {!! $barcode->getBarcodeHTML($order->barcode_data, 'C128', 3, 60) !!}
         <div class="kode-text">{{ $order->barcode_data }}</div>
     </div>
 

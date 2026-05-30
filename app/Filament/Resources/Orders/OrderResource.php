@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Orders;
 
 use App\Filament\Resources\Orders\Pages;
 use App\Models\Order;
+use App\Models\Layanan;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -15,9 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
 use BackedEnum;
 
 class OrderResource extends Resource
@@ -55,34 +53,19 @@ class OrderResource extends Resource
                 ->schema([
                     Select::make('layanan_id')
                         ->label('Jenis Layanan')
-                        ->options([
-                            1 => 'Reguler Cuci Kering - Rp 10.000/kg',
-                            2 => 'Express Sehari Jadi - Rp 15.000/kg',
-                            3 => 'Cuci Kering Saja - Rp 5.000/kg',
-                            4 => 'Setrika Saja - Rp 6.000/kg',
-                        ])
+                        // Ambil langsung dari database, otomatis update kalau ada layanan baru
+                        ->options(fn () => Layanan::pluck('nama_layanan', 'id'))
                         ->required()
                         ->live()
                         ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                            $harga = match((int)$state) {
-                                1 => 10000,
-                                2 => 15000,
-                                3 => 5000,
-                                4 => 6000,
-                                default => 0,
-                            };
-                            $estimasi = match((int)$state) {
-                                1 => 3,
-                                2 => 1,
-                                3 => 2,
-                                4 => 1,
-                                default => 1,
-                            };
-                            $berat = $get('berat_kg');
-                            if ($berat) {
-                                $set('total_harga', $harga * $berat);
+                            $layanan = Layanan::find($state);
+                            if ($layanan) {
+                                $berat = $get('berat_kg');
+                                if ($berat) {
+                                    $set('total_harga', $layanan->harga_per_kg * $berat);
+                                }
+                                $set('estimasi_selesai', now()->addDays($layanan->estimasi_hari)->format('Y-m-d'));
                             }
-                            $set('estimasi_selesai', now()->addDays($estimasi)->format('Y-m-d'));
                         }),
 
                     TextInput::make('berat_kg')
@@ -92,15 +75,9 @@ class OrderResource extends Resource
                         ->required()
                         ->live()
                         ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                            $harga = match((int)$get('layanan_id')) {
-                                1 => 10000,
-                                2 => 15000,
-                                3 => 5000,
-                                4 => 6000,
-                                default => 0,
-                            };
-                            if ($harga && $state) {
-                                $set('total_harga', $harga * $state);
+                            $layanan = Layanan::find($get('layanan_id'));
+                            if ($layanan && $state) {
+                                $set('total_harga', $layanan->harga_per_kg * $state);
                             }
                         }),
 
@@ -158,15 +135,10 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('no_hp')
                     ->label('No HP'),
 
+                // Ambil nama layanan dari database
                 Tables\Columns\TextColumn::make('layanan_id')
                     ->label('Layanan')
-                    ->formatStateUsing(fn ($state) => match((int)$state) {
-                        1 => 'Reguler Cuci Kering',
-                        2 => 'Express Sehari Jadi',
-                        3 => 'Cuci Kering Saja',
-                        4 => 'Setrika Saja',
-                        default => '-',
-                    }),
+                    ->formatStateUsing(fn ($state) => Layanan::find($state)?->nama_layanan ?? '-'),
 
                 Tables\Columns\TextColumn::make('berat_kg')
                     ->label('Berat')
@@ -207,15 +179,15 @@ class OrderResource extends Resource
                     ]),
             ])
             ->actions([
-            \Filament\Actions\Action::make('cetak')
-                ->label('Cetak Nota')
-                ->icon('heroicon-o-printer')
-                ->color('success')
-                ->url(fn (Order $record) => route('order.nota', $record))
-                ->openUrlInNewTab(),
-            \Filament\Actions\EditAction::make(),
-            \Filament\Actions\DeleteAction::make(),
-        ])
+                \Filament\Actions\Action::make('cetak')
+                    ->label('Cetak Nota')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->url(fn (Order $record) => route('order.nota', $record))
+                    ->openUrlInNewTab(),
+                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\DeleteAction::make(),
+            ])
             ->defaultSort('created_at', 'desc');
     }
 
